@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成本攤平計算器</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --background-color: #f8fafc;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: #1a1a1a;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-size: 1.8rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin: 1.5rem 0;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .result {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background-color: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>成本攤平計算器</h1>
+        
+        <div class="form-group">
+            <label for="currentShares">目前持股數量：</label>
+            <input type="number" id="currentShares" value="16" min="1">
+        </div>
+
+        <div class="form-group">
+            <label for="totalCost">目前持股成本（元）：</label>
+            <input type="number" id="totalCost" value="15551" min="0">
+        </div>
+
+        <div class="form-group">
+            <label for="currentPrice">目前市價（元）：</label>
+            <input type="number" id="currentPrice" value="909" min="0">
+        </div>
+
+        <div class="form-group">
+            <label for="targetCost">目標平均成本（元）：</label>
+            <input type="number" id="targetCost" value="913" min="0">
+        </div>
+
+        <button onclick="calculate()">計算攤平方案</button>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        function formatNumber(number, decimals = 2) {
+            return Number(number).toLocaleString('zh-TW', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+
+        function calculate() {
+            // 獲取輸入值
+            const currentShares = parseFloat(document.getElementById('currentShares').value);
+            const totalCost = parseFloat(document.getElementById('totalCost').value);
+            const currentPrice = parseFloat(document.getElementById('currentPrice').value);
+            const targetCost = parseFloat(document.getElementById('targetCost').value);
+
+            // 驗證輸入
+            if (!currentShares || !totalCost || !currentPrice || !targetCost) {
+                alert('請填寫所有欄位！');
+                return;
+            }
+
+            // 計算當前每股成本
+            const currentCostPerShare = totalCost / currentShares;
+
+            // 檢查目標成本是否合理
+            if (targetCost >= currentCostPerShare) {
+                alert('目標成本必須低於當前每股成本！');
+                return;
+            }
+
+            if (targetCost <= currentPrice) {
+                alert('目標成本必須高於當前市價！');
+                return;
+            }
+
+            // 計算需要購買的股數
+            // 公式推導：
+            // (原總成本 + 新購股數 × 現價) / (原股數 + 新購股數) = 目標成本
+            // 原總成本 + 新購股數 × 現價 = 目標成本 × (原股數 + 新購股數)
+            // 新購股數 × 現價 - 目標成本 × 新購股數 = 目標成本 × 原股數 - 原總成本
+            // 新購股數 × (現價 - 目標成本) = 目標成本 × 原股數 - 原總成本
+            // 新購股數 = (目標成本 × 原股數 - 原總成本) / (現價 - 目標成本)
+            
+            const neededShares = Math.ceil((targetCost * currentShares - totalCost) / (currentPrice - targetCost));
+            
+            // 計算實際可達到的平均成本
+            const totalSharesAfter = currentShares + neededShares;
+            const totalCostAfter = totalCost + (neededShares * currentPrice);
+            const actualAverageCost = totalCostAfter / totalSharesAfter;
+
+            // 生成報表
+            const report = `=== 成本攤平方案 ===
+
+1. 目前持股狀況
+   • 持有股數：${formatNumber(currentShares, 0)} 股
+   • 持股成本：${formatNumber(totalCost, 2)} 元
+   • 每股成本：${formatNumber(currentCostPerShare, 2)} 元
+   • 當前市價：${formatNumber(currentPrice, 2)} 元
+   • 目標成本：${formatNumber(targetCost, 2)} 元
+
+2. 建議加碼方案
+   • 建議買入：${formatNumber(neededShares, 0)} 股
+   • 買入價格：${formatNumber(currentPrice, 2)} 元
+   • 預計投入：${formatNumber(neededShares * currentPrice, 2)} 元
+
+3. 攤平後結果
+   • 總持股數：${formatNumber(totalSharesAfter, 0)} 股
+   • 總投資額：${formatNumber(totalCostAfter, 2)} 元
+   • 實際平均成本：${formatNumber(actualAverageCost, 2)} 元
+   • 預計每股獲利：${formatNumber(targetCost - actualAverageCost, 2)} 元
+
+注意事項：
+• 計算結果已經過四捨五入
+• 實際交易時請考慮交易成本
+• 建議分批買入降低風險
+• 投資前請審慎評估市場風險`;
+
+            // 顯示報表
+            document.getElementById('result').textContent = report;
+        }
+
+        // 頁面載入時自動執行計算
+        document.addEventListener('DOMContentLoaded', calculate);
+    </script>
+</body>
+</html>
